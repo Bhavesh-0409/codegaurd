@@ -24,7 +24,8 @@ from extractor import extract_python_imports, filter_third_party
 from agent.orchestrator import verify_package
 from agent.prompt_injection import check_prompt_injection
 from agent.tools import parse_threat_doc
-from models import PromptCheckRequest
+from agent.gemini_utils import generate_security_patch
+from models import PromptCheckRequest, PromptCheckResponse, FixRequest, FixResponse
 
 app = FastAPI(title="Sentinel API")
 
@@ -52,6 +53,7 @@ def _severity_for(verdict: str) -> str:
         "confirmed_injection": "high",
         "suspected_injection": "medium",
         "benign": "low",
+        "out_of_scope": "low",
     }.get(verdict, "low")
 
 
@@ -64,10 +66,18 @@ def health():
 # Feature 1: Prompt injection check
 # ---------------------------------------------------------------------------
 
-@app.post("/api/check-prompt")
+@app.post("/api/check-prompt", response_model=PromptCheckResponse)
 def check_prompt(req: PromptCheckRequest):
     result = check_prompt_injection(req.prompt)
-    verdict = result.get("verdict", "benign")
+    security_status = result.get("security_status", "safe")
+    scope_status = result.get("scope_status", "in_scope")
+    reasoning_notes = result.get("reasoning_notes", "")
+
+    verdict = "benign"
+    if security_status == "malicious":
+        verdict = "confirmed_injection"
+    elif scope_status == "out_of_scope":
+        verdict = "out_of_scope"
 
     if verdict != "benign":
         db.log_event(
@@ -75,10 +85,23 @@ def check_prompt(req: PromptCheckRequest):
             scan_type="prompt",
             verdict=verdict,
             flagged_item=req.prompt[:200],
-            reason=result.get("reason", ""),
+            reason=reasoning_notes,
             severity=_severity_for(verdict),
         )
     return result
+
+
+# ---------------------------------------------------------------------------
+# Feature: One-Click Fix
+# ---------------------------------------------------------------------------
+
+@app.post("/api/fix", response_model=FixResponse)
+def fix_code(req: FixRequest):
+    # Reuse the orchestrator client for simplicity
+    from agent.orchestrator import _get_client
+    client = _get_client()
+    patched = generate_security_patch(client, req.vulnerable_code)
+    return {"patched_code": patched}
 
 
 # ---------------------------------------------------------------------------

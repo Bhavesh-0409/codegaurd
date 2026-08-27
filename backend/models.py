@@ -7,9 +7,10 @@ class PromptCheckRequest(BaseModel):
 
 
 class PromptCheckResponse(BaseModel):
-    verdict: str            # "benign" | "suspected_injection" | "confirmed_injection"
-    flagged_span: str | None
-    reason: str
+    security_status: str       # "safe" | "malicious"
+    scope_status: str          # "in_scope" | "out_of_scope"
+    reasoning_notes: str
+    response_output: str | None = None
 
 
 class PackageVerdict(BaseModel):
@@ -41,3 +42,12 @@ class UserSummary(BaseModel):
     total_flags: int
     high_severity_count: int
     last_flag_at: str
+
+
+class FixRequest(BaseModel):
+    vulnerable_code: str
+    file_name: str | None = None
+
+
+class FixResponse(BaseModel):
+    patched_code: str

@@ -105,14 +105,69 @@ async function handlePrompt(text, userId, loadingBubble) {
   const data = await res.json();
 
   const bubble = loadingBubble.querySelector(".bubble");
-  bubble.innerHTML = `
-    <div class="package-row verdict-${data.verdict}">
-      <span class="badge">${data.verdict.replace("_", " ")}</span>
-      <div>
-        ${data.flagged_span ? `<div class="meta">Flagged span: "${escapeHtml(data.flagged_span)}"</div>` : ""}
-        <div class="meta">${escapeHtml(data.reason || "")}</div>
-      </div>
+  let answerHtml = "";
+  if (data.security_status === "safe" && data.scope_status === "in_scope" && data.response_output) {
+    answerHtml = `<div class="agent-answer" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+      <strong>Sentinel:</strong> <br/>
+      ${escapeHtml(data.response_output)}
     </div>`;
+  }
+
+  let badgeClass = data.security_status === "malicious" ? "verdict-confirmed_injection" : (data.scope_status === "out_of_scope" ? "verdict-unverified" : "verdict-benign");
+  let badgeText = data.security_status === "malicious" ? "Malicious" : (data.scope_status === "out_of_scope" ? "Out of Scope" : "Safe");
+
+  let fixBtnHtml = "";
+  if (data.security_status === "malicious") {
+    fixBtnHtml = `<button class="fix-btn" style="margin-top: 10px;" onclick="triggerFix(this, '${escapeHtml(text).replace(/'/g, "\\'")}')">One-Click Fix</button>`;
+  }
+
+  bubble.innerHTML = `
+    <div class="package-row ${badgeClass}">
+      <span class="badge">${badgeText}</span>
+      <div>
+        <div class="meta">${escapeHtml(data.reasoning_notes || "")}</div>
+        ${data.security_status === "malicious" ? `<pre><code class="language-python">${escapeHtml(text)}</code></pre>` : ""}
+      </div>
+      ${fixBtnHtml}
+    </div>
+    ${answerHtml}`;
+    
+  if (window.Prism) {
+    Prism.highlightAllUnder(bubble);
+  }
+}
+
+async function triggerFix(btn, codeToFix) {
+  const originalText = btn.textContent;
+  btn.textContent = "Fixing...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/fix`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vulnerable_code: codeToFix })
+    });
+    
+    if (!res.ok) throw new Error("Fix failed");
+    const data = await res.json();
+    
+    // Trigger download
+    const blob = new Blob([data.patched_code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "patched_code.py";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    btn.textContent = "Fixed & Downloaded!";
+  } catch (err) {
+    btn.textContent = "Error!";
+    console.error(err);
+  }
 }
 
 function renderScanResultsInBubble(loadingBubble, results, filename) {
