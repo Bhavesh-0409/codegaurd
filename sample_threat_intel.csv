@@ -1,0 +1,3 @@
+package,reason
+requests,Flagged internally after a compromised maintainer account incident (example entry for demo purposes)
+leftpad-plus,Known malicious clone reported by internal security research

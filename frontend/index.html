@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentinel</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <h1>🛡️ Sentinel</h1>
+        <p class="tagline">Prompt injection defense + AI-hallucinated package detection</p>
+      </div>
+      <nav>
+        <button class="tab-btn active" data-tab="chat">Chat</button>
+        <button class="tab-btn" data-tab="admin">Admin / Audit Log</button>
+      </nav>
+    </header>
+
+    <!-- Chat view -->
+    <section id="tab-chat" class="tab-panel active">
+      <div class="chat-wrap">
+        <div id="chat-log" class="chat-log">
+          <div class="msg bot">
+            <div class="bubble">
+              Hi, I'm Sentinel. Type a prompt to check it for injection, or attach a
+              <code>.py</code> file to scan its packages. You can also attach a
+              <code>.csv</code>/<code>.md</code>/<code>.txt</code> threat-intel doc to add
+              a custom blocklist for future scans.
+            </div>
+          </div>
+        </div>
+
+        <div id="attachment-chip" class="attachment-chip hidden">
+          <span id="attachment-name"></span>
+          <button id="remove-attachment">✕</button>
+        </div>
+
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="user-id-input" class="user-id-input" value="demo_user" title="User ID for audit log" />
+          <label for="file-attach" class="attach-btn" title="Attach a file">📎</label>
+          <input type="file" id="file-attach" accept=".py,.csv,.md,.txt" hidden />
+          <input type="text" id="chat-text-input" class="chat-text-input" placeholder="Type a prompt to check, or attach a file and hit send..." autocomplete="off" />
+          <button type="submit" id="send-btn">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Admin view -->
+    <section id="tab-admin" class="tab-panel">
+      <div class="panel">
+        <h2>Top flagged users</h2>
+        <table id="user-summary-table">
+          <thead><tr><th>User</th><th>Total flags</th><th>High severity</th><th>Last flag</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Audit log</h2>
+        <button id="refresh-audit-btn">Refresh</button>
+        <table id="audit-log-table">
+          <thead><tr><th>Time</th><th>User</th><th>Type</th><th>Verdict</th><th>Item</th><th>Reason</th><th>Severity</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
